@@ -328,6 +328,133 @@
             border-color: #c3e6cb;
         }
 
+        .admin-dashboard {
+            display: grid;
+            grid-template-columns: minmax(170px, 0.9fr) minmax(280px, 1.5fr) minmax(170px, 0.9fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .dashboard-card {
+            border: 1px solid #9aa9b8;
+            background: #fff;
+            padding: 12px;
+            min-height: 190px;
+        }
+
+        .dashboard-card h3 {
+            margin: 0 0 10px;
+            padding-bottom: 7px;
+            border-bottom: 1px solid #d6dce2;
+            color: #003366;
+            font-size: 14px;
+        }
+
+        .status-count-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 0;
+            border-bottom: 1px dotted #ccc;
+            font-size: 12px;
+        }
+
+        .status-count-row:last-child {
+            border-bottom: 0;
+        }
+
+        .status-count-value {
+            min-width: 28px;
+            padding: 2px 6px;
+            border: 1px solid #999;
+            background: #f4f4f4;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .monthly-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            height: 135px;
+            padding: 8px 4px 0;
+            border-bottom: 1px solid #777;
+            overflow-x: auto;
+        }
+
+        .monthly-chart-empty {
+            width: 100%;
+            align-self: center;
+            color: #888;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .month-column {
+            display: flex;
+            flex: 1 0 42px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            height: 100%;
+            min-width: 42px;
+        }
+
+        .month-value {
+            color: #003366;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .month-bar {
+            width: 24px;
+            min-height: 2px;
+            margin: 3px 0;
+            background: #0056b3;
+            border: 1px solid #004085;
+        }
+
+        .month-label {
+            color: #555;
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
+        .completion-rate {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 132px;
+        }
+
+        .completion-rate-value {
+            color: #155724;
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        .completion-rate-caption {
+            margin-top: 3px;
+            color: #555;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .completion-rate-detail {
+            margin-top: 10px;
+            color: #666;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        @media (max-width: 760px) {
+            .admin-dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* Banner Notification for Admin */
         #adminNotificationBanner {
             display: none;
@@ -412,11 +539,6 @@
                 </div>
 
                 <button type="submit" class="btn-auth-submit">เข้าสู่ระบบ</button>
-
-                <div class="auth-hint">
-                    * บัญชีทดสอบเจ้าหน้าที่ Admin:<br>
-                    รหัส 13 หลัก: <code>9999999999999</code> | รหัสผ่าน: <code>admin123</code>
-                </div>
 
                 <div class="auth-toggle-link">
                     ยังไม่มีบัญชีใช่หรือไม่? <a onclick="showAuthBox('signup')">สมัครสมาชิก</a>
@@ -537,10 +659,10 @@
                         <tr>
                             <th style="width: 90px;">รหัสแจ้ง</th>
                             <th style="width: 165px;">วันที่ยื่น</th>
-                            <th style="width: 140px;">แผนก</th>
                             <th>ปัญหา</th>
                             <th style="width: 105px;">สถานะ</th>
                             <th>หมายเหตุช่าง</th>
+                            <th style="width: 70px; text-align: center;">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody id="userReportsTableBody"></tbody>
@@ -554,6 +676,24 @@
     <div id="adminReportsContainer" style="display: none;">
         <fieldset style="background: #fdfdfd; border-color: #003366;">
             <legend>🛡️ เจ้าหน้าที่ Admin - รายการแจ้งปัญหาทั้งหมด</legend>
+
+            <!-- Admin Dashboard -->
+            <div class="admin-dashboard">
+                <section class="dashboard-card">
+                    <h3>📊 สรุปตามสถานะ</h3>
+                    <div id="dashboardStatusCounts"></div>
+                </section>
+
+                <section class="dashboard-card">
+                    <h3>📅 จำนวนรายงานในแต่ละเดือน</h3>
+                    <div id="dashboardMonthlyChart" class="monthly-chart"></div>
+                </section>
+
+                <section class="dashboard-card">
+                    <h3>✅ อัตราการแก้ไขปัญหา</h3>
+                    <div id="dashboardCompletionRate" class="completion-rate"></div>
+                </section>
+            </div>
 
             <!-- Admin Filter Toolbar -->
             <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; background: #e9ecef; padding: 6px; border: 1px solid #ced4da; align-items: center;">
@@ -615,7 +755,39 @@
 </div>
 
 <!-- ======================================================== -->
-<!-- 3. ADMIN EDIT & RESOLVE MODAL                            -->
+<!-- 3. USER EDIT PROBLEM MODAL                               -->
+<!-- ======================================================== -->
+<div id="userEditModal" class="modal-overlay">
+    <div class="modal-body">
+        <h3 class="modal-title">แก้ไขรายละเอียดปัญหา</h3>
+        <form onsubmit="executeSaveUserEdit(event)">
+            <input type="hidden" id="userEditDocId">
+
+            <div class="form-group">
+                <label>รหัสแจ้งปัญหา:</label>
+                <input type="text" id="userEditTicketId" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>ชื่อ-นามสกุล:</label>
+                <input type="text" id="userEditFullName" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>ปัญหา:</label>
+                <textarea id="userEditProblem" rows="4" required></textarea>
+            </div>
+
+            <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" onclick="closeUserEditModal()">ยกเลิก</button>
+                <button type="submit" class="btn-primary">บันทึกการแก้ไข</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- 4. ADMIN EDIT & RESOLVE MODAL                            -->
 <!-- ======================================================== -->
 <div id="adminEditModal" class="modal-overlay">
     <div class="modal-body">
@@ -672,7 +844,7 @@
 </div>
 
 <!-- ======================================================== -->
-<!-- 4. FIREBASE SETTINGS MODAL                                -->
+<!-- 5. FIREBASE SETTINGS MODAL                                -->
 <!-- ======================================================== -->
 <div id="firebaseConfigModal" class="modal-overlay">
     <div class="modal-body" style="max-width: 500px;">
@@ -723,18 +895,7 @@
     let initialLoadDone = false;
 
     // Seed Accounts
-    const DEFAULT_ACCOUNTS = [
-        {
-            idNumber: '9999999999999',
-            password: 'admin123',
-            role: 'admin'
-        },
-        {
-            idNumber: '1100200345678',
-            password: 'password123',
-            role: 'user'
-        }
-    ];
+    const DEFAULT_ACCOUNTS = [];
 
     // Seed Demo Reports
     const DEFAULT_REPORTS = [
@@ -926,7 +1087,7 @@ async function triggerN8nEmailNotification(reportData) {
         el.style.display = 'block';
     }
 
-    function executeSignIn(e) {
+    async function executeSignIn(e) {
         e.preventDefault();
         clearAuthErrors();
 
@@ -938,16 +1099,28 @@ async function triggerN8nEmailNotification(reportData) {
             return;
         }
 
-        const user = allUsers.find(u => u.idNumber === idNumber && u.password === password);
-        if (!user) {
-            setAuthError('signInError', 'รหัส 13 หลัก หรือ รหัสผ่านไม่ถูกต้อง');
-            return;
+        try {
+            if (firestoreInstance) {
+                const userDoc = await firestoreInstance.collection('users').doc(idNumber).get();
+                if (!userDoc.exists || userDoc.data().password !== password) {
+                    setAuthError('signInError', 'รหัส 13 หลัก หรือ รหัสผ่านไม่ถูกต้อง');
+                    return;
+                }
+                loginSession(userDoc.data());
+            } else {
+                const user = allUsers.find(u => u.idNumber === idNumber && u.password === password);
+                if (!user) {
+                    setAuthError('signInError', 'รหัส 13 หลัก หรือ รหัสผ่านไม่ถูกต้อง');
+                    return;
+                }
+                loginSession(user);
+            }
+        } catch (err) {
+            setAuthError('signInError', 'เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message);
         }
-
-        loginSession(user);
     }
 
-    function executeSignUp(e) {
+    async function executeSignUp(e) {
         e.preventDefault();
         clearAuthErrors();
 
@@ -970,23 +1143,36 @@ async function triggerN8nEmailNotification(reportData) {
             return;
         }
 
-        const alreadyExists = allUsers.some(u => u.idNumber === idNumber);
-        if (alreadyExists) {
-            setAuthError('signUpError', 'รหัส 13 หลักนี้เคยสมัครสมาชิกแล้ว กรุณากดเข้าสู่ระบบ');
-            return;
-        }
-
         const newUser = {
             idNumber,
             password,
-            role: (idNumber === '9999999999999') ? 'admin' : 'user'
+            role: (idNumber === '9999999999999') ? 'admin' : 'user',
+            createdAt: new Date().toISOString()
         };
 
-        allUsers.push(newUser);
-        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(allUsers));
+        try {
+            if (firestoreInstance) {
+                const docRef = firestoreInstance.collection('users').doc(idNumber);
+                const docSnap = await docRef.get();
+                if (docSnap.exists) {
+                    setAuthError('signUpError', 'รหัส 13 หลักนี้เคยสมัครสมาชิกแล้ว กรุณากดเข้าสู่ระบบ');
+                    return;
+                }
+                await docRef.set(newUser);
+            } else {
+                if (allUsers.some(u => u.idNumber === idNumber)) {
+                    setAuthError('signUpError', 'รหัส 13 หลักนี้เคยสมัครสมาชิกแล้ว กรุณากดเข้าสู่ระบบ');
+                    return;
+                }
+                allUsers.push(newUser);
+                localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(allUsers));
+            }
 
-        alert('สมัครสมาชิกสำเร็จแล้ว! ระบบจะนำเข้าสู่ระบบทันที');
-        loginSession(newUser);
+            alert('สมัครสมาชิกสำเร็จแล้ว! ระบบจะนำเข้าสู่ระบบทันที');
+            loginSession(newUser);
+        } catch (err) {
+            setAuthError('signUpError', 'เกิดข้อผิดพลาดในการสมัครสมาชิก: ' + err.message);
+        }
     }
 
     function loginSession(user) {
@@ -1121,11 +1307,13 @@ async function triggerN8nEmailNotification(reportData) {
             tr.innerHTML = `
                 <td><strong>${escapeHtml(r.id)}</strong></td>
                 <td>${escapeHtml(r.createdAtFormatted)}</td>
-                <td>${escapeHtml(r.department)}</td>
                 <td>${escapeHtml(r.problem)}</td>
                 <td>${renderStatusTag(r.status)}</td>
                 <td style="color: ${r.adminNote ? '#003366' : '#777'};">
                     ${escapeHtml(r.adminNote || 'ยังไม่มีบันทึกตอบกลับ')}
+                </td>
+                <td style="text-align: center;">
+                    <button type="button" class="btn-sm" onclick="openUserEditModal('${r.id}')">✏️ แก้ไข</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -1133,6 +1321,8 @@ async function triggerN8nEmailNotification(reportData) {
     }
 
     function renderAdminWorkspace() {
+        renderAdminDashboard();
+
         const tbody = document.getElementById('adminReportsTableBody');
         const emptyMsg = document.getElementById('adminEmptyMsg');
         tbody.innerHTML = '';
@@ -1176,6 +1366,164 @@ async function triggerN8nEmailNotification(reportData) {
             `;
             tbody.appendChild(tr);
         });
+    }
+
+    function renderAdminDashboard() {
+        const statusCounts = {
+            'รอดำเนินการ': 0,
+            'กำลังแก้ไข': 0,
+            'แก้ไขแล้ว': 0
+        };
+
+        allReports.forEach(report => {
+            if (Object.prototype.hasOwnProperty.call(statusCounts, report.status)) {
+                statusCounts[report.status]++;
+            }
+        });
+
+        document.getElementById('dashboardStatusCounts').innerHTML = `
+            <div class="status-count-row">
+                <span>⏳ รอดำเนินการ</span>
+                <span class="status-count-value">${statusCounts['รอดำเนินการ']}</span>
+            </div>
+            <div class="status-count-row">
+                <span>🔧 กำลังแก้ไข</span>
+                <span class="status-count-value">${statusCounts['กำลังแก้ไข']}</span>
+            </div>
+            <div class="status-count-row">
+                <span>✅ แก้ไขแล้ว</span>
+                <span class="status-count-value">${statusCounts['แก้ไขแล้ว']}</span>
+            </div>
+        `;
+
+        renderMonthlyReportChart();
+
+        const totalReports = allReports.length;
+        const completedReports = statusCounts['แก้ไขแล้ว'];
+        const nonCompletedReports = totalReports - completedReports;
+        const completionPercentage = totalReports === 0
+            ? 0
+            : Math.round((completedReports / totalReports) * 100);
+
+        document.getElementById('dashboardCompletionRate').innerHTML = `
+            <div class="completion-rate-value">${completionPercentage}%</div>
+            <div class="completion-rate-caption">รายงานที่แก้ไขแล้ว</div>
+            <div class="completion-rate-detail">
+                เสร็จสิ้น ${completedReports} รายการ / ยังไม่เสร็จ ${nonCompletedReports} รายการ
+            </div>
+        `;
+    }
+
+    function renderMonthlyReportChart() {
+        const chart = document.getElementById('dashboardMonthlyChart');
+        const monthlyCounts = new Map();
+
+        allReports.forEach(report => {
+            const reportDate = new Date(report.createdAtIso);
+            if (Number.isNaN(reportDate.getTime())) return;
+
+            const monthKey = `${reportDate.getFullYear()}-${String(reportDate.getMonth() + 1).padStart(2, '0')}`;
+            monthlyCounts.set(monthKey, (monthlyCounts.get(monthKey) || 0) + 1);
+        });
+
+        chart.innerHTML = '';
+        if (monthlyCounts.size === 0) {
+            chart.innerHTML = '<div class="monthly-chart-empty">ยังไม่มีข้อมูลรายงานตามเดือน</div>';
+            return;
+        }
+
+        const sortedMonths = [...monthlyCounts.entries()].sort(([first], [second]) =>
+            first.localeCompare(second)
+        );
+        const highestCount = Math.max(...sortedMonths.map(([, count]) => count));
+
+        sortedMonths.forEach(([monthKey, count]) => {
+            const [year, month] = monthKey.split('-').map(Number);
+            const monthColumn = document.createElement('div');
+            monthColumn.className = 'month-column';
+
+            const value = document.createElement('div');
+            value.className = 'month-value';
+            value.textContent = count;
+
+            const bar = document.createElement('div');
+            bar.className = 'month-bar';
+            bar.style.height = `${Math.max(8, (count / highestCount) * 88)}px`;
+            bar.title = `${count} รายการ`;
+
+            const label = document.createElement('div');
+            label.className = 'month-label';
+            label.textContent = new Intl.DateTimeFormat('th-TH', {
+                month: 'short',
+                year: '2-digit'
+            }).format(new Date(year, month - 1, 1));
+
+            monthColumn.append(value, bar, label);
+            chart.appendChild(monthColumn);
+        });
+    }
+
+    function openUserEditModal(ticketId) {
+        if (!currentUser || currentUser.role === 'admin') return;
+
+        const report = allReports.find(item =>
+            item.id === ticketId && item.idNumber === currentUser.idNumber
+        );
+        if (!report) {
+            alert('ไม่พบรายงานของท่าน หรือไม่มีสิทธิ์แก้ไขรายการนี้');
+            return;
+        }
+
+        document.getElementById('userEditDocId').value = report.id;
+        document.getElementById('userEditTicketId').value = report.id;
+        document.getElementById('userEditFullName').value = report.fullName || '';
+        document.getElementById('userEditProblem').value = report.problem || '';
+        document.getElementById('userEditModal').style.display = 'flex';
+    }
+
+    function closeUserEditModal() {
+        document.getElementById('userEditModal').style.display = 'none';
+    }
+
+    async function executeSaveUserEdit(e) {
+        e.preventDefault();
+
+        if (!currentUser || currentUser.role === 'admin') {
+            alert('ไม่สามารถแก้ไขรายงานนี้ได้');
+            return;
+        }
+
+        const id = document.getElementById('userEditDocId').value;
+        const problem = document.getElementById('userEditProblem').value.trim();
+        const report = allReports.find(item =>
+            item.id === id && item.idNumber === currentUser.idNumber
+        );
+
+        if (!report) {
+            alert('ไม่พบรายงานของท่าน หรือไม่มีสิทธิ์แก้ไขรายการนี้');
+            closeUserEditModal();
+            return;
+        }
+
+        if (!problem) {
+            alert('กรุณากรอกรายละเอียดปัญหา');
+            return;
+        }
+
+        try {
+            if (firestoreInstance) {
+                await firestoreInstance.collection('network_reports').doc(id).update({ problem });
+            } else {
+                report.problem = problem;
+                localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(allReports));
+                renderUserWorkspace();
+            }
+
+            closeUserEditModal();
+            alert(`บันทึกการแก้ไขรายงานรหัส ${id} เรียบร้อยแล้ว`);
+        } catch (err) {
+            alert('ไม่สามารถบันทึกการแก้ไขได้: ' + err.message);
+        }
     }
 
     function renderStatusTag(status) {
