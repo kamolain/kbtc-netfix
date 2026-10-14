@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบแจ้งปัญหาเครือข่ายคอมพิวเตอร์</title>
+
+    <!-- Firebase App & Firestore Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* สไตล์แบบเรียบง่าย สไตล์นักศึกษาเรียนเขียนเว็บ (Simple Student HTML/CSS) */
+        * {
+            box-sizing: border-box;
+            font-family: 'Sarabun', Tahoma, 'Segoe UI', Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            font-size: 14px;
+            min-height: 100vh;
+        }
+
+        /* ========================================================= */
+        /* AUTH SCREEN: COMPLETELY EMPTY VIEW WITH SINGLE SQUARE BOX */
+        /* ========================================================= */
+        #authScreen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            background-color: #eaeaea;
+        }
+
+        .auth-box {
+            width: 100%;
+            max-width: 380px;
+            background-color: #ffffff;
+            border: 1px solid #999999;
+            padding: 24px;
+            box-shadow: none;
+        }
+
+        .auth-box h2 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            font-size: 18px;
+            text-align: center;
+            color: #111;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+
+        .auth-field {
+            margin-bottom: 12px;
+        }
+
+        .auth-field label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .auth-field input,
+        .auth-field select {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #777;
+            background: #fff;
+            font-size: 13px;
+        }
+
+        .auth-field input:focus,
+        .auth-field select:focus {
+            outline: 2px solid #0056b3;
+        }
+
+        .btn-auth-submit {
+            width: 100%;
+            padding: 8px;
+            background-color: #0056b3;
+            color: white;
+            border: 1px solid #004085;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 6px;
+        }
+
+        .btn-auth-submit:hover {
+            background-color: #004085;
+        }
+
+        .auth-toggle-link {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 13px;
+            border-top: 1px dotted #bbb;
+            padding-top: 12px;
+        }
+
+        .auth-toggle-link a {
+            color: #0056b3;
+            text-decoration: underline;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .auth-error {
+            display: none;
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+            padding: 8px;
+            font-size: 12px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .auth-hint {
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+            margin-top: 10px;
+            background: #fafafa;
+            border: 1px dashed #ccc;
+            padding: 6px;
+        }
+
+        /* ========================================================= */
+        /* MAIN WORKSPACE VIEW (SHOWN ONLY AFTER SIGN IN)            */
+        /* ========================================================= */
+        #mainAppScreen {
+            display: none;
+            max-width: 980px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #ffffff;
+            border: 1px solid #bbb;
+        }
+
+        header.app-header {
+            border-bottom: 2px solid #222;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        header.app-header h1 {
+            margin: 0;
+            font-size: 20px;
+            color: #003366;
+        }
+
+        header.app-header p {
+            margin: 4px 0 0 0;
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Top status navigation */
+        .top-nav {
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            padding: 8px 12px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .badge-role {
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: bold;
+            border: 1px solid #777;
+        }
+
+        .badge-admin {
+            background: #c82333;
+            color: white;
+            border-color: #bd2130;
+        }
+
+        .badge-user {
+            background: #0069d9;
+            color: white;
+            border-color: #0062cc;
+        }
+
+        /* Minimal Fieldsets */
+        fieldset {
+            border: 1px solid #888;
+            margin-bottom: 16px;
+            padding: 14px;
+            background: #fafafa;
+        }
+
+        legend {
+            font-weight: bold;
+            color: #003366;
+            padding: 0 6px;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 3px;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .form-group label .req {
+            color: red;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #888;
+            font-size: 13px;
+            background-color: #fff;
+        }
+
+        .form-group input[readonly] {
+            background: #e9ecef;
+            color: #495057;
+            cursor: not-allowed;
+        }
+
+        button {
+            padding: 5px 12px;
+            font-size: 13px;
+            border: 1px solid #666;
+            background: #e0e0e0;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #d4d4d4;
+        }
+
+        button.btn-primary {
+            background-color: #0056b3;
+            color: white;
+            border-color: #004085;
+            font-weight: bold;
+        }
+
+        button.btn-primary:hover {
+            background-color: #004085;
+        }
+
+        button.btn-danger {
+            background-color: #dc3545;
+            color: white;
+            border-color: #bd2130;
+        }
+
+        button.btn-sm {
+            padding: 2px 7px;
+            font-size: 12px;
+        }
+
+        /* Standard Minimal Table */
+        table.plain-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 8px;
+            background: #fff;
+        }
+
+        table.plain-table th,
+        table.plain-table td {
+            border: 1px solid #888;
+            padding: 6px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        table.plain-table th {
+            background-color: #e2e8f0;
+            color: #111;
+        }
+
+        table.plain-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        /* Status tags */
+        .status-badge {
+            display: inline-block;
+            padding: 2px 5px;
+            font-size: 11px;
+            font-weight: bold;
+            border: 1px solid #999;
+        }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+            border-color: #ffeeba;
+        }
+
+        .status-progress {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-color: #bee5eb;
+        }
+
+        .status-resolved {
+            background-color: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+
+        /* Banner Notification for Admin */
+        #adminNotificationBanner {
+            display: none;
+            background-color: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* Admin Edit Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-body {
+            background: #fff;
+            border: 2px solid #333;
+            width: 90%;
+            max-width: 550px;
+            padding: 18px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-title {
+            margin-top: 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #ccc;
+            font-size: 16px;
+            color: #003366;
+        }
+
+        .empty-placeholder {
+            text-align: center;
+            color: #888;
+            padding: 16px;
+            font-style: italic;
+        }
+
+        .app-footer {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #ccc;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ======================================================== -->
+<!-- 1. AUTH SCREEN: COMPLETELY EMPTY VIEW WITH CENTERED BOX   -->
+<!-- ======================================================== -->
+<div id="authScreen">
+    <div class="auth-box">
+
+        <!-- 1.1 SIGN IN STATE -->
+        <div id="boxSignIn">
+            <h2>เข้าสู่ระบบ</h2>
+            <div id="signInError" class="auth-error"></div>
+
+            <form onsubmit="executeSignIn(event)">
+                <div class="auth-field">
+                    <label for="inputLoginId">รหัส 13 หลัก:</label>
+                    <input type="text" id="inputLoginId" maxlength="13" required placeholder="กรอกรหัส 13 หลัก">
+                </div>
+
+                <div class="auth-field">
+                    <label for="inputLoginPassword">รหัสผ่าน:</label>
+                    <input type="password" id="inputLoginPassword" minlength="6" required placeholder="รหัสผ่านอย่างน้อย 6 ตัวอักษร">
+                </div>
+
+                <button type="submit" class="btn-auth-submit">เข้าสู่ระบบ</button>
+
+                <div class="auth-hint">
+                    * บัญชีทดสอบเจ้าหน้าที่ Admin:<br>
+                    รหัส 13 หลัก: <code>9999999999999</code> | รหัสผ่าน: <code>admin123</code>
+                </div>
+
+                <div class="auth-toggle-link">
+                    ยังไม่มีบัญชีใช่หรือไม่? <a onclick="showAuthBox('signup')">สมัครสมาชิก</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- 1.2 SIGN UP STATE -->
+        <div id="boxSignUp" style="display: none;">
+            <h2>สมัครสมาชิก</h2>
+            <div id="signUpError" class="auth-error"></div>
+
+            <form onsubmit="executeSignUp(event)">
+                <div class="auth-field">
+                    <label for="inputRegId">รหัส 13 หลัก:</label>
+                    <input type="text" id="inputRegId" maxlength="13" required placeholder="กรอกรหัส 13 หลัก">
+                </div>
+
+                <div class="auth-field">
+                    <label for="inputRegPassword">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร):</label>
+                    <input type="password" id="inputRegPassword" minlength="6" required placeholder="กำหนดรหัสผ่าน">
+                </div>
+
+                <div class="auth-field">
+                    <label for="inputRegPasswordConfirm">ยืนยันรหัสผ่าน:</label>
+                    <input type="password" id="inputRegPasswordConfirm" minlength="6" required placeholder="ยืนยันรหัสผ่านอีกครั้ง">
+                </div>
+
+                <button type="submit" class="btn-auth-submit" style="background-color: #28a745; border-color: #1e7e34;">สมัครสมาชิก</button>
+
+                <div class="auth-toggle-link">
+                    มีบัญชีอยู่แล้ว? <a onclick="showAuthBox('signin')">เข้าสู่ระบบ</a>
+                </div>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- 2. MAIN APPLICATION WORKSPACE                             -->
+<!-- ======================================================== -->
+<div id="mainAppScreen">
+
+    <!-- Top Header -->
+    <header class="app-header">
+        <h1>ระบบแจ้งปัญหาเครือข่ายคอมพิวเตอร์</h1>
+        <p>หน่วยงานบริการเครือข่ายและเทคโนโลยีสารสนเทศ</p>
+    </header>
+
+    <!-- Navigation / Top Status Bar -->
+    <div class="top-nav">
+        <div id="sessionUserLabel">
+            รหัส 13 หลัก: <strong>กำลังโหลด...</strong>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <span id="storageModeLabel" style="font-size: 11px; color: #555;">ฐานข้อมูล: Local Storage</span>
+            <button type="button" class="btn-sm" onclick="toggleFirebaseConfigModal()">⚙️ ตั้งค่า Firebase</button>
+            <button type="button" class="btn-sm btn-danger" onclick="executeLogout()">ออกจากระบบ</button>
+        </div>
+    </div>
+
+    <!-- Admin Notification Banner for New Submissions -->
+    <div id="adminNotificationBanner">
+        🔔 มีรายงานแจ้งปัญหาเครือข่ายใหม่เข้ามาในระบบ!
+        <button type="button" class="btn-sm" onclick="closeAdminNotification()" style="margin-left: 8px;">รับทราบ / ปิดแจ้งเตือน</button>
+    </div>
+
+    <!-- Report Submission Form (Both User and Admin can submit) -->
+    <fieldset>
+        <legend>📝 แบบฟอร์มแจ้งปัญหาเครือข่าย</legend>
+        <form onsubmit="executeSubmitReport(event)">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group">
+                    <label>ชื่อ-นามสกุล: <span class="req">*</span></label>
+                    <input type="text" id="formFullName" required placeholder="ระบุชื่อและนามสกุล">
+                </div>
+                <div class="form-group">
+                    <label>รหัส 13 หลัก:</label>
+                    <input type="text" id="formIdNumber" readonly>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>แผนก: <span class="req">*</span></label>
+                <select id="formDepartment" required>
+                    <option value="" disabled selected>-- เลือกแผนก --</option>
+                    <option value="ธุรการ / บริหารทั่วไป">ธุรการ / บริหารทั่วไป</option>
+                    <option value="การเงินและบัญชี">การเงินและบัญชี</option>
+                    <option value="เทคโนโลยีสารสนเทศ (IT)">เทคโนโลยีสารสนเทศ (IT)</option>
+                    <option value="ฝ่ายบุคคล (HR)">ฝ่ายบุคคล (HR)</option>
+                    <option value="ฝ่ายผลิต / ปฏิบัติการ">ฝ่ายผลิต / ปฏิบัติการ</option>
+                    <option value="แผนกอื่นๆ">แผนกอื่นๆ</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>ปัญหา: <span class="req">*</span></label>
+                <textarea id="formProblem" rows="3" required placeholder="ระบุรายละเอียดปัญหาที่พบ เช่น ใช้งานอินเทอร์เน็ตไม่ได้, เชื่อมต่อ Wi-Fi ไม่ติด, สัญญาณหลุดบ่อย..."></textarea>
+            </div>
+
+            <div style="font-size: 11px; color: #666; margin-bottom: 8px;">
+                * ระบบจะบันทึก <strong>[วันที่ยื่น]</strong> ตามเวลามาตรฐานประเทศไทย (Asia/Bangkok) โดยอัตโนมัติเมื่อกดส่ง
+            </div>
+
+            <button type="submit" class="btn-primary">ส่งรายงานปัญหา</button>
+            <button type="reset" style="margin-left: 5px;">ล้างข้อมูล</button>
+        </form>
+    </fieldset>
+
+    <!-- PERSPECTIVE A: USER LIST (ONLY THEIR OWN REPORTS) -->
+    <div id="userReportsContainer">
+        <fieldset>
+            <legend>📋 รายการแจ้งปัญหาของฉัน</legend>
+            <div style="overflow-x: auto;">
+                <table class="plain-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 90px;">รหัสแจ้ง</th>
+                            <th style="width: 165px;">วันที่ยื่น</th>
+                            <th style="width: 140px;">แผนก</th>
+                            <th>ปัญหา</th>
+                            <th style="width: 105px;">สถานะ</th>
+                            <th>หมายเหตุช่าง</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userReportsTableBody"></tbody>
+                </table>
+            </div>
+            <div id="userEmptyMsg" class="empty-placeholder" style="display: none;">ท่านยังไม่เคยส่งรายงานแจ้งปัญหาในระบบ</div>
+        </fieldset>
+    </div>
+
+    <!-- PERSPECTIVE B: ADMIN LIST (ALL REPORTS + EDIT + RESOLVE CONTROL) -->
+    <div id="adminReportsContainer" style="display: none;">
+        <fieldset style="background: #fdfdfd; border-color: #003366;">
+            <legend>🛡️ เจ้าหน้าที่ Admin - รายการแจ้งปัญหาทั้งหมด</legend>
+
+            <!-- Admin Filter Toolbar -->
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; background: #e9ecef; padding: 6px; border: 1px solid #ced4da; align-items: center;">
+                <div>
+                    <label style="font-size: 12px; font-weight: bold;">แผนก:</label>
+                    <select id="filterDept" onchange="renderAdminWorkspace()" style="padding: 3px; font-size: 12px;">
+                        <option value="ALL">ทั้งหมด</option>
+                        <option value="ธุรการ / บริหารทั่วไป">ธุรการ / บริหารทั่วไป</option>
+                        <option value="การเงินและบัญชี">การเงินและบัญชี</option>
+                        <option value="เทคโนโลยีสารสนเทศ (IT)">เทคโนโลยีสารสนเทศ (IT)</option>
+                        <option value="ฝ่ายบุคคล (HR)">ฝ่ายบุคคล (HR)</option>
+                        <option value="ฝ่ายผลิต / ปฏิบัติการ">ฝ่ายผลิต / ปฏิบัติการ</option>
+                        <option value="แผนกอื่นๆ">แผนกอื่นๆ</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="font-size: 12px; font-weight: bold;">สถานะ:</label>
+                    <select id="filterStatus" onchange="renderAdminWorkspace()" style="padding: 3px; font-size: 12px;">
+                        <option value="ALL">ทั้งหมด</option>
+                        <option value="รอดำเนินการ">รอดำเนินการ</option>
+                        <option value="กำลังแก้ไข">กำลังแก้ไข</option>
+                        <option value="แก้ไขแล้ว">แก้ไขแล้ว</option>
+                    </select>
+                </div>
+
+                <div style="flex-grow: 1;">
+                    <input type="text" id="adminSearchInput" oninput="renderAdminWorkspace()" placeholder="ค้นหา ชื่อ, รหัส 13 หลัก, หรือข้อความ..." style="width: 100%; padding: 4px; font-size: 12px; border: 1px solid #999;">
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="plain-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">รหัสแจ้ง</th>
+                            <th style="width: 145px;">วันที่ยื่น</th>
+                            <th style="width: 125px;">ชื่อ-นามสกุล</th>
+                            <th style="width: 110px;">รหัส 13 หลัก</th>
+                            <th style="width: 115px;">แผนก</th>
+                            <th>ปัญหา</th>
+                            <th style="width: 95px;">สถานะ</th>
+                            <th>หมายเหตุช่าง</th>
+                            <th style="width: 70px; text-align: center;">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminReportsTableBody"></tbody>
+                </table>
+            </div>
+            <div id="adminEmptyMsg" class="empty-placeholder" style="display: none;">ไม่มีรายการแจ้งปัญหาตรงกับเงื่อนไข</div>
+        </fieldset>
+    </div>
+
+    <!-- Footer -->
+    <div class="app-footer">
+        <span>ระบบแจ้งปัญหาเครือข่ายคอมพิวเตอร์</span>
+        <span>เวลามาตรฐานประเทศไทย (Asia/Bangkok)</span>
+    </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- 3. ADMIN EDIT & RESOLVE MODAL                            -->
+<!-- ======================================================== -->
+<div id="adminEditModal" class="modal-overlay">
+    <div class="modal-body">
+        <h3 class="modal-title">แก้ไขรายงานปัญหา & ปรับสถานะ (Admin Edit)</h3>
+        <form onsubmit="executeSaveAdminEdit(event)">
+            <input type="hidden" id="editDocId">
+
+            <div class="form-group">
+                <label>รหัสแจ้งปัญหา:</label>
+                <input type="text" id="editTicketId" readonly>
+            </div>
+            <div class="form-group">
+                <label>ชื่อ-นามสกุล ผู้แจ้ง:</label>
+                <input type="text" id="editFullName" required>
+            </div>
+            <div class="form-group">
+                <label>แผนก:</label>
+                <select id="editDepartment" required>
+                    <option value="ธุรการ / บริหารทั่วไป">ธุรการ / บริหารทั่วไป</option>
+                    <option value="การเงินและบัญชี">การเงินและบัญชี</option>
+                    <option value="เทคโนโลยีสารสนเทศ (IT)">เทคโนโลยีสารสนเทศ (IT)</option>
+                    <option value="ฝ่ายบุคคล (HR)">ฝ่ายบุคคล (HR)</option>
+                    <option value="ฝ่ายผลิต / ปฏิบัติการ">ฝ่ายผลิต / ปฏิบัติการ</option>
+                    <option value="แผนกอื่นๆ">แผนกอื่นๆ</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>ปัญหา:</label>
+                <textarea id="editProblem" rows="3" required></textarea>
+            </div>
+
+            <hr style="border: 0; border-top: 1px dashed #aaa; margin: 12px 0;">
+
+            <div class="form-group">
+                <label style="color: #003366;">ปรับสถานะงาน:</label>
+                <select id="editStatus" style="font-weight: bold; background: #fffde7;">
+                    <option value="รอดำเนินการ">⏳ รอดำเนินการ</option>
+                    <option value="กำลังแก้ไข">🔧 กำลังแก้ไข</option>
+                    <option value="แก้ไขแล้ว">✅ แก้ไขแล้ว</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>หมายเหตุช่าง / รายละเอียดการแก้ไข:</label>
+                <textarea id="editAdminNote" rows="2" placeholder="เช่น ดำเนินการรีเซ็ตพอร์ตเรียบร้อย..."></textarea>
+            </div>
+
+            <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" onclick="closeAdminEditModal()">ยกเลิก</button>
+                <button type="submit" class="btn-primary">บันทึกข้อมูล</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- 4. FIREBASE SETTINGS MODAL                                -->
+<!-- ======================================================== -->
+<div id="firebaseConfigModal" class="modal-overlay">
+    <div class="modal-body" style="max-width: 500px;">
+        <h3 class="modal-title">⚙️ ตั้งค่าการเชื่อมต่อ Firebase</h3>
+        <p style="font-size: 12px; color: #555; margin-top: 0;">
+            วางข้อความ JSON ก้อน <code>firebaseConfig</code> จาก Firebase Console หรือกรอกค่าลงในช่อง
+        </p>
+
+        <div class="form-group">
+            <label>วางโค้ด JSON ก้อนเดียว:</label>
+            <textarea id="cfgPasteArea" rows="2" placeholder='{"apiKey": "...", "projectId": "...", ...}' style="font-family: monospace;"></textarea>
+            <button type="button" class="btn-sm" onclick="parseConfigFromJson()" style="margin-top: 4px;">แยกใส่ช่องด้านล่าง</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="form-group"><label>apiKey:</label><input type="text" id="cfgApiKey"></div>
+            <div class="form-group"><label>projectId:</label><input type="text" id="cfgProjectId"></div>
+            <div class="form-group"><label>authDomain:</label><input type="text" id="cfgAuthDomain"></div>
+            <div class="form-group"><label>storageBucket:</label><input type="text" id="cfgStorageBucket"></div>
+            <div class="form-group"><label>messagingSenderId:</label><input type="text" id="cfgMessagingSenderId"></div>
+            <div class="form-group"><label>appId:</label><input type="text" id="cfgAppId"></div>
+        </div>
+
+        <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" onclick="toggleFirebaseConfigModal()">ปิด</button>
+            <button type="button" onclick="resetToLocalDemo()">รีเซ็ตใช้ Local Storage</button>
+            <button type="button" class="btn-primary" onclick="saveFirebaseConfig()">บันทึก & เชื่อมต่อ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // =========================================================
+    // 1. CONSTANTS & STORAGE KEYS
+    // =========================================================
+    const USERS_STORAGE_KEY = 'net_simple_users';
+    const REPORTS_STORAGE_KEY = 'net_simple_reports';
+    const FIREBASE_CONFIG_KEY = 'net_simple_fb_cfg';
+    const N8N_WEBHOOK_URL = 'https://westminster-gazette-argue-overseas.trycloudflare.com/webhook/website-report';
+
+    let firestoreInstance = null;
+    let firestoreUnsubscribe = null;
+
+    let currentUser = null; // { idNumber, password, role: 'admin' | 'user' }
+    let allUsers = [];
+    let allReports = [];
+    let knownTicketIds = new Set();
+    let initialLoadDone = false;
+
+    // Seed Accounts
+    const DEFAULT_ACCOUNTS = [
+        {
+            idNumber: '9999999999999',
+            password: 'admin123',
+            role: 'admin'
+        },
+        {
+            idNumber: '1100200345678',
+            password: 'password123',
+            role: 'user'
+        }
+    ];
+
+    // Seed Demo Reports
+    const DEFAULT_REPORTS = [
+        {
+            id: 'TICK-1001',
+            fullName: 'สมชาย ประเสริฐสุข',
+            idNumber: '1100200345678',
+            department: 'การเงินและบัญชี',
+            problem: 'เชื่อมต่อเครือข่ายอินเทอร์เน็ตไม่ได้',
+            createdAtFormatted: '12 ต.ค. 2569 08:30:15',
+            createdAtIso: '2026-10-12T08:30:15.000+07:00',
+            status: 'รอดำเนินการ',
+            adminNote: ''
+        }
+    ];
+
+    // =========================================================
+    // 2. THAILAND / BANGKOK TIME AUTOMATIC GENERATOR
+    // =========================================================
+    function generateBangkokTimestamp() {
+        const now = new Date();
+        const options = {
+            timeZone: 'Asia/Bangkok',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        };
+
+        const formatter = new Intl.DateTimeFormat('th-TH', options);
+        return {
+            formatted: formatter.format(now),
+            iso: now.toISOString()
+        };
+    }
+
+    // =========================================================
+    // 3. SOUND SYNTHESIS FOR ADMIN NOTIFICATION
+    // =========================================================
+    function playNotificationSound() {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+            osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.12); // A5
+
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 0.4);
+        } catch (e) {
+            console.log("Audio skipped:", e);
+        }
+    }
+
+    // =========================================================
+    // 4. DATABASE / STORAGE INITIALIZATION
+    // =========================================================
+    function initDatabaseStorage() {
+        const savedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+        allUsers = savedUsers ? JSON.parse(savedUsers) : [...DEFAULT_ACCOUNTS];
+
+        const modeLabel = document.getElementById('storageModeLabel');
+
+        const config = {
+            apiKey: "AIzaSyBYJL-iKhabksVsIKu1NHUuKxILXiuXEbA",
+            authDomain: "network-reporting-system.firebaseapp.com",
+            projectId: "network-reporting-system",
+            storageBucket: "network-reporting-system.firebasestorage.app",
+            messagingSenderId: "226086482427",
+            appId: "1:226086482427:web:d4b8f66eb5743c9dea9b5e"
+        };
+
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(config);
+            }
+            firestoreInstance = firebase.firestore();
+            modeLabel.innerHTML = '<span style="color: green; font-weight: bold;">ฐานข้อมูล: Firestore Online</span>';
+            listenToFirestoreReports();
+            return;
+        } catch (err) {
+            console.error("Firestore init error:", err);
+            modeLabel.innerText = 'ฐานข้อมูล: เชื่อมต่อ Firebase ล้มเหลว (ใช้ Local Storage)';
+        }
+
+        modeLabel.innerText = 'ฐานข้อมูล: Local Storage';
+        const savedReports = localStorage.getItem(REPORTS_STORAGE_KEY);
+        allReports = savedReports ? JSON.parse(savedReports) : [...DEFAULT_REPORTS];
+        allReports.forEach(r => knownTicketIds.add(r.id));
+        initialLoadDone = true;
+    }
+
+    function listenToFirestoreReports() {
+        if (!firestoreInstance) return;
+        if (firestoreUnsubscribe) firestoreUnsubscribe();
+
+        firestoreUnsubscribe = firestoreInstance.collection('network_reports')
+            .onSnapshot((snapshot) => {
+                const list = [];
+                snapshot.forEach(doc => {
+                    list.push({ ...doc.data(), id: doc.id });
+                });
+
+                list.sort((a, b) => (b.createdAtIso || '').localeCompare(a.createdAtIso || ''));
+
+                // Notification alert for admin when a new report is added
+                if (initialLoadDone && currentUser && currentUser.role === 'admin') {
+                    const newIncoming = list.filter(item => !knownTicketIds.has(item.id));
+                    if (newIncoming.length > 0) {
+                        triggerAdminNotification();
+                    }
+                }
+
+                allReports = list;
+                knownTicketIds = new Set(list.map(item => item.id));
+                initialLoadDone = true;
+
+                renderViews();
+            }, (error) => {
+                console.error("Firestore error:", error);
+            });
+    }
+
+    function triggerAdminNotification() {
+        document.getElementById('adminNotificationBanner').style.display = 'block';
+        playNotificationSound();
+    }
+
+    function closeAdminNotification() {
+        document.getElementById('adminNotificationBanner').style.display = 'none';
+    }
+// =========================================================
+// N8N AUTOMATED ALERT DISPATCHER
+// =========================================================
+async function triggerN8nEmailNotification(reportData) {
+    const N8N_WEBHOOK_URL = 'https://westminster-gazette-argue-overseas.trycloudflare.com/webhook/website-report';
+
+    try {
+        await fetch(N8N_WEBHOOK_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(reportData)
+        });
+    } catch (err) {
+        console.warn('n8n Webhook trigger error:', err);
+    }
+}
+    // =========================================================
+    // 5. AUTHENTICATION (SIGN IN & SIGN UP)
+    // =========================================================
+    function showAuthBox(type) {
+        const boxSignIn = document.getElementById('boxSignIn');
+        const boxSignUp = document.getElementById('boxSignUp');
+        clearAuthErrors();
+
+        if (type === 'signup') {
+            boxSignIn.style.display = 'none';
+            boxSignUp.style.display = 'block';
+        } else {
+            boxSignUp.style.display = 'none';
+            boxSignIn.style.display = 'block';
+        }
+    }
+
+    function clearAuthErrors() {
+        document.getElementById('signInError').style.display = 'none';
+        document.getElementById('signUpError').style.display = 'none';
+    }
+
+    function setAuthError(boxId, msg) {
+        const el = document.getElementById(boxId);
+        el.innerText = msg;
+        el.style.display = 'block';
+    }
+
+    function executeSignIn(e) {
+        e.preventDefault();
+        clearAuthErrors();
+
+        const idNumber = document.getElementById('inputLoginId').value.trim();
+        const password = document.getElementById('inputLoginPassword').value;
+
+        if (idNumber.length !== 13 || !/^\d+$/.test(idNumber)) {
+            setAuthError('signInError', 'กรุณากรอกรหัส 13 หลักให้ถูกต้อง (ตัวเลข 13 หลัก)');
+            return;
+        }
+
+        const user = allUsers.find(u => u.idNumber === idNumber && u.password === password);
+        if (!user) {
+            setAuthError('signInError', 'รหัส 13 หลัก หรือ รหัสผ่านไม่ถูกต้อง');
+            return;
+        }
+
+        loginSession(user);
+    }
+
+    function executeSignUp(e) {
+        e.preventDefault();
+        clearAuthErrors();
+
+        const idNumber = document.getElementById('inputRegId').value.trim();
+        const password = document.getElementById('inputRegPassword').value;
+        const passwordConfirm = document.getElementById('inputRegPasswordConfirm').value;
+
+        if (idNumber.length !== 13 || !/^\d+$/.test(idNumber)) {
+            setAuthError('signUpError', 'รหัส 13 หลัก ต้องเป็นตัวเลข 13 หลัก');
+            return;
+        }
+
+        if (password.length < 6) {
+            setAuthError('signUpError', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+            return;
+        }
+
+        if (password !== passwordConfirm) {
+            setAuthError('signUpError', 'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน');
+            return;
+        }
+
+        const alreadyExists = allUsers.some(u => u.idNumber === idNumber);
+        if (alreadyExists) {
+            setAuthError('signUpError', 'รหัส 13 หลักนี้เคยสมัครสมาชิกแล้ว กรุณากดเข้าสู่ระบบ');
+            return;
+        }
+
+        const newUser = {
+            idNumber,
+            password,
+            role: (idNumber === '9999999999999') ? 'admin' : 'user'
+        };
+
+        allUsers.push(newUser);
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(allUsers));
+
+        alert('สมัครสมาชิกสำเร็จแล้ว! ระบบจะนำเข้าสู่ระบบทันที');
+        loginSession(newUser);
+    }
+
+    function loginSession(user) {
+        currentUser = user;
+        sessionStorage.setItem('net_active_session', JSON.stringify(user));
+
+        document.getElementById('authScreen').style.display = 'none';
+        document.getElementById('mainAppScreen').style.display = 'block';
+
+        const roleBadge = user.role === 'admin'
+            ? '<span class="badge-role badge-admin">เจ้าหน้าที่ Admin</span>'
+            : '<span class="badge-role badge-user">ผู้ใช้งานทั่วไป</span>';
+
+        document.getElementById('sessionUserLabel').innerHTML =
+            `รหัส 13 หลัก: <strong>${escapeHtml(user.idNumber)}</strong> | สถานะ: ${roleBadge}`;
+
+        // Lock 13-digit ID in the submission form
+        document.getElementById('formIdNumber').value = user.idNumber;
+
+        // Perspective toggles
+        if (user.role === 'admin') {
+            document.getElementById('adminReportsContainer').style.display = 'block';
+            document.getElementById('userReportsContainer').style.display = 'none';
+        } else {
+            document.getElementById('adminReportsContainer').style.display = 'none';
+            document.getElementById('userReportsContainer').style.display = 'block';
+        }
+
+        renderViews();
+    }
+
+    function executeLogout() {
+        currentUser = null;
+        sessionStorage.removeItem('net_active_session');
+
+        document.getElementById('mainAppScreen').style.display = 'none';
+        document.getElementById('authScreen').style.display = 'flex';
+        document.getElementById('adminNotificationBanner').style.display = 'none';
+
+        document.getElementById('inputLoginPassword').value = '';
+        showAuthBox('signin');
+    }
+    
+    // =========================================================
+    // 6. REPORT SUBMISSION (Thai Time Captured Automatically)
+    // =========================================================
+    async function executeSubmitReport(e) {
+        e.preventDefault();
+        if (!currentUser) return;
+
+        const fullName = document.getElementById('formFullName').value.trim();
+        const idNumber = document.getElementById('formIdNumber').value.trim();
+        const department = document.getElementById('formDepartment').value;
+        const problem = document.getElementById('formProblem').value.trim();
+
+        if (!fullName || !department || !problem) {
+            alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+            return;
+        }
+
+        const bkkTime = generateBangkokTimestamp();
+        const ticketNum = `TICK-${Math.floor(1000 + Math.random() * 9000)}`;
+
+        const newReport = {
+            id: ticketNum,
+            fullName,
+            idNumber,
+            department,
+            problem,
+            createdAtFormatted: bkkTime.formatted,
+            createdAtIso: bkkTime.iso,
+            status: 'รอดำเนินการ',
+            adminNote: ''
+        };
+
+        try {
+            if (firestoreInstance) {
+                await firestoreInstance.collection('network_reports').doc(ticketNum).set(newReport);
+            } else {
+                allReports.unshift(newReport);
+                localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(allReports));
+                knownTicketIds.add(ticketNum);
+                renderViews();
+            }
+
+            // Dispatch alert via n8n helper function
+            triggerN8nEmailNotification({
+                ticketId: ticketNum,
+                fullName,
+                idNumber,
+                department,
+                problem,
+                submittedAt: bkkTime.formatted,
+                status: newReport.status
+            });
+
+            alert(`ส่งการแจ้งปัญหาเรียบร้อยแล้ว!\nรหัสแจ้ง: ${ticketNum}\nวันที่ยื่น: ${bkkTime.formatted}`);
+            document.getElementById('formProblem').value = '';
+        } catch (err) {
+            alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);
+        }
+    }
+
+    // =========================================================
+    // 7. RENDERING WORKSPACES (User & Admin Views)
+    // =========================================================
+    function renderViews() {
+        if (!currentUser) return;
+        if (currentUser.role === 'admin') {
+            renderAdminWorkspace();
+        } else {
+            renderUserWorkspace();
+        }
+    }
+
+    function renderUserWorkspace() {
+        const tbody = document.getElementById('userReportsTableBody');
+        const emptyMsg = document.getElementById('userEmptyMsg');
+        tbody.innerHTML = '';
+
+        // User sees only their own reports matching their รหัส 13 หลัก
+        const myReports = allReports.filter(r => r.idNumber === currentUser.idNumber);
+
+        if (myReports.length === 0) {
+            emptyMsg.style.display = 'block';
+            return;
+        }
+        emptyMsg.style.display = 'none';
+
+        myReports.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${escapeHtml(r.id)}</strong></td>
+                <td>${escapeHtml(r.createdAtFormatted)}</td>
+                <td>${escapeHtml(r.department)}</td>
+                <td>${escapeHtml(r.problem)}</td>
+                <td>${renderStatusTag(r.status)}</td>
+                <td style="color: ${r.adminNote ? '#003366' : '#777'};">
+                    ${escapeHtml(r.adminNote || 'ยังไม่มีบันทึกตอบกลับ')}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderAdminWorkspace() {
+        const tbody = document.getElementById('adminReportsTableBody');
+        const emptyMsg = document.getElementById('adminEmptyMsg');
+        tbody.innerHTML = '';
+
+        const filterDept = document.getElementById('filterDept').value;
+        const filterStatus = document.getElementById('filterStatus').value;
+        const keyword = document.getElementById('adminSearchInput').value.trim().toLowerCase();
+
+        const filtered = allReports.filter(r => {
+            const matchDept = (filterDept === 'ALL') || (r.department === filterDept);
+            const matchStatus = (filterStatus === 'ALL') || (r.status === filterStatus);
+            const matchKeyword = !keyword ||
+                (r.id && r.id.toLowerCase().includes(keyword)) ||
+                (r.fullName && r.fullName.toLowerCase().includes(keyword)) ||
+                (r.idNumber && r.idNumber.includes(keyword)) ||
+                (r.problem && r.problem.toLowerCase().includes(keyword));
+
+            return matchDept && matchStatus && matchKeyword;
+        });
+
+        if (filtered.length === 0) {
+            emptyMsg.style.display = 'block';
+            return;
+        }
+        emptyMsg.style.display = 'none';
+
+        filtered.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${escapeHtml(r.id)}</strong></td>
+                <td><small>${escapeHtml(r.createdAtFormatted)}</small></td>
+                <td>${escapeHtml(r.fullName)}</td>
+                <td><code>${escapeHtml(r.idNumber)}</code></td>
+                <td>${escapeHtml(r.department)}</td>
+                <td>${escapeHtml(r.problem)}</td>
+                <td>${renderStatusTag(r.status)}</td>
+                <td style="font-size: 12px; color: #003366;">${escapeHtml(r.adminNote || '-')}</td>
+                <td style="text-align: center;">
+                    <button type="button" class="btn-sm" onclick="openAdminEditModal('${r.id}')">✏️ แก้ไข</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderStatusTag(status) {
+        if (status === 'แก้ไขแล้ว') {
+            return '<span class="status-badge status-resolved">✅ แก้ไขแล้ว</span>';
+        } else if (status === 'กำลังแก้ไข') {
+            return '<span class="status-badge status-progress">🔧 กำลังแก้ไข</span>';
+        } else {
+            return '<span class="status-badge status-pending">⏳ รอดำเนินการ</span>';
+        }
+    }
+
+    // =========================================================
+    // 8. ADMIN EDIT & RESOLVE MODAL LOGIC
+    // =========================================================
+    function openAdminEditModal(ticketId) {
+        const report = allReports.find(r => r.id === ticketId);
+        if (!report) return;
+
+        document.getElementById('editDocId').value = report.id;
+        document.getElementById('editTicketId').value = report.id;
+        document.getElementById('editFullName').value = report.fullName;
+        document.getElementById('editDepartment').value = report.department;
+        document.getElementById('editProblem').value = report.problem;
+        document.getElementById('editStatus').value = report.status || 'รอดำเนินการ';
+        document.getElementById('editAdminNote').value = report.adminNote || '';
+
+        document.getElementById('adminEditModal').style.display = 'flex';
+    }
+
+    function closeAdminEditModal() {
+        document.getElementById('adminEditModal').style.display = 'none';
+    }
+
+    async function executeSaveAdminEdit(e) {
+        e.preventDefault();
+        const id = document.getElementById('editDocId').value;
+        const fullName = document.getElementById('editFullName').value.trim();
+        const department = document.getElementById('editDepartment').value;
+        const problem = document.getElementById('editProblem').value.trim();
+        const status = document.getElementById('editStatus').value;
+        const adminNote = document.getElementById('editAdminNote').value.trim();
+
+        try {
+            if (firestoreInstance) {
+                await firestoreInstance.collection('network_reports').doc(id).update({
+                    fullName,
+                    department,
+                    problem,
+                    status,
+                    adminNote
+                });
+            } else {
+                const idx = allReports.findIndex(r => r.id === id);
+                if (idx !== -1) {
+                    allReports[idx].fullName = fullName;
+                    allReports[idx].department = department;
+                    allReports[idx].problem = problem;
+                    allReports[idx].status = status;
+                    allReports[idx].adminNote = adminNote;
+                    localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(allReports));
+                    renderAdminWorkspace();
+                }
+            }
+
+            closeAdminEditModal();
+            alert(`บันทึกการแก้ไขรายการรหัส ${id} เรียบร้อยแล้ว`);
+        } catch (err) {
+            alert('ไม่สามารถบันทึกได้: ' + err.message);
+        }
+    }
+
+    // =========================================================
+    // 9. FIREBASE SETTINGS MODAL
+    // =========================================================
+    function toggleFirebaseConfigModal() {
+        const modal = document.getElementById('firebaseConfigModal');
+        const isShown = (modal.style.display === 'flex');
+        modal.style.display = isShown ? 'none' : 'flex';
+
+        if (!isShown) {
+            const saved = localStorage.getItem(FIREBASE_CONFIG_KEY);
+            if (saved) {
+                try {
+                    const c = JSON.parse(saved);
+                    document.getElementById('cfgApiKey').value = c.apiKey || '';
+                    document.getElementById('cfgProjectId').value = c.projectId || '';
+                    document.getElementById('cfgAuthDomain').value = c.authDomain || '';
+                    document.getElementById('cfgStorageBucket').value = c.storageBucket || '';
+                    document.getElementById('cfgMessagingSenderId').value = c.messagingSenderId || '';
+                    document.getElementById('cfgAppId').value = c.appId || '';
+                } catch(e) {}
+            }
+        }
+    }
+
+    function parseConfigFromJson() {
+        const text = document.getElementById('cfgPasteArea').value.trim();
+        if (!text) return;
+        try {
+            const clean = text.replace(/^[^{]*/, '').replace(/[^}]*$/, '');
+            const obj = JSON.parse(clean);
+            if (obj.apiKey) document.getElementById('cfgApiKey').value = obj.apiKey;
+            if (obj.projectId) document.getElementById('cfgProjectId').value = obj.projectId;
+            if (obj.authDomain) document.getElementById('cfgAuthDomain').value = obj.authDomain;
+            if (obj.storageBucket) document.getElementById('cfgStorageBucket').value = obj.storageBucket;
+            if (obj.messagingSenderId) document.getElementById('cfgMessagingSenderId').value = obj.messagingSenderId;
+            if (obj.appId) document.getElementById('cfgAppId').value = obj.appId;
+            alert("แยกข้อมูลลงช่องเรียบร้อยแล้ว กรุณากด 'บันทึก & เชื่อมต่อ'");
+        } catch (e) {
+            alert("รูปแบบ JSON ไม่ถูกต้อง");
+        }
+    }
+
+    function saveFirebaseConfig() {
+        const cfg = {
+            apiKey: document.getElementById('cfgApiKey').value.trim(),
+            projectId: document.getElementById('cfgProjectId').value.trim(),
+            authDomain: document.getElementById('cfgAuthDomain').value.trim(),
+            storageBucket: document.getElementById('cfgStorageBucket').value.trim(),
+            messagingSenderId: document.getElementById('cfgMessagingSenderId').value.trim(),
+            appId: document.getElementById('cfgAppId').value.trim()
+        };
+
+        if (!cfg.apiKey || !cfg.projectId) {
+            alert('กรุณากรอก apiKey และ projectId เป็นอย่างน้อย');
+            return;
+        }
+
+        localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(cfg));
+        alert('บันทึกการตั้งค่าแล้ว ระบบจะทำการรีเฟรชเพื่อเชื่อมต่อ...');
+        location.reload();
+    }
+
+    function resetToLocalDemo() {
+        if (confirm('ต้องการรีเซ็ตกลับเป็นโหมด Local Storage หรือไม่?')) {
+            localStorage.removeItem(FIREBASE_CONFIG_KEY);
+            location.reload();
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // =========================================================
+    // 10. INITIALIZATION
+    // =========================================================
+    window.onload = function() {
+        initDatabaseStorage();
+
+        const active = sessionStorage.getItem('net_active_session');
+        if (active) {
+            try {
+                const user = JSON.parse(active);
+                loginSession(user);
+            } catch (e) {
+                executeLogout();
+            }
+        }
+    };
+</script>
+
+</body>
+</html>
