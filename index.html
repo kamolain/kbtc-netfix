@@ -895,7 +895,17 @@
     let initialLoadDone = false;
 
     // Seed Accounts
-    const DEFAULT_ACCOUNTS = [];
+    const DEFAULT_ADMIN_ACCOUNT = {
+        idNumber: '69402040022',
+        password: '456654',
+        role: 'admin'
+    };
+    const DEFAULT_USER_ACCOUNT = {
+        idNumber: '1234566543210',
+        password: '123456',
+        role: 'user'
+    };
+    const DEFAULT_ACCOUNTS = [DEFAULT_ADMIN_ACCOUNT, DEFAULT_USER_ACCOUNT];
 
     // Seed Demo Reports
     const DEFAULT_REPORTS = [
@@ -969,7 +979,15 @@
     // =========================================================
     function initDatabaseStorage() {
         const savedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-        allUsers = savedUsers ? JSON.parse(savedUsers) : [...DEFAULT_ACCOUNTS];
+        allUsers = savedUsers ? JSON.parse(savedUsers) : [];
+        [DEFAULT_ADMIN_ACCOUNT, DEFAULT_USER_ACCOUNT].forEach(defaultAccount => {
+            if (!allUsers.some(user => user.idNumber === defaultAccount.idNumber)) {
+                allUsers.push({ ...defaultAccount });
+            }
+        });
+        if (savedUsers === null || allUsers.length > JSON.parse(savedUsers || '[]').length) {
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(allUsers));
+        }
 
         const modeLabel = document.getElementById('storageModeLabel');
 
@@ -1094,12 +1112,28 @@ async function triggerN8nEmailNotification(reportData) {
         const idNumber = document.getElementById('inputLoginId').value.trim();
         const password = document.getElementById('inputLoginPassword').value;
 
-        if (idNumber.length !== 13 || !/^\d+$/.test(idNumber)) {
+        const isDefaultAdmin = idNumber === DEFAULT_ADMIN_ACCOUNT.idNumber;
+        const isDefaultUser = idNumber === DEFAULT_USER_ACCOUNT.idNumber;
+        if ((!isDefaultAdmin && !isDefaultUser && idNumber.length !== 13) || !/^\d+$/.test(idNumber)) {
             setAuthError('signInError', 'กรุณากรอกรหัส 13 หลักให้ถูกต้อง (ตัวเลข 13 หลัก)');
             return;
         }
 
         try {
+            const defaultAccount = isDefaultAdmin
+                ? DEFAULT_ADMIN_ACCOUNT
+                : isDefaultUser
+                    ? DEFAULT_USER_ACCOUNT
+                    : null;
+            if (defaultAccount) {
+                if (password !== defaultAccount.password) {
+                    setAuthError('signInError', 'รหัส 13 หลัก หรือ รหัสผ่านไม่ถูกต้อง');
+                    return;
+                }
+                loginSession(defaultAccount);
+                return;
+            }
+
             if (firestoreInstance) {
                 const userDoc = await firestoreInstance.collection('users').doc(idNumber).get();
                 if (!userDoc.exists || userDoc.data().password !== password) {
@@ -1140,6 +1174,15 @@ async function triggerN8nEmailNotification(reportData) {
 
         if (password !== passwordConfirm) {
             setAuthError('signUpError', 'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน');
+            return;
+        }
+
+        if (idNumber === DEFAULT_ADMIN_ACCOUNT.idNumber) {
+            setAuthError('signUpError', 'รหัสนี้เป็นบัญชีผู้ดูแลระบบเริ่มต้น ไม่สามารถสมัครซ้ำได้');
+            return;
+        }
+        if (idNumber === DEFAULT_USER_ACCOUNT.idNumber) {
+            setAuthError('signUpError', 'รหัสนี้เป็นบัญชีผู้ใช้งานเริ่มต้น ไม่สามารถสมัครซ้ำได้');
             return;
         }
 
