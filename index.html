@@ -596,7 +596,6 @@
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
             <span id="storageModeLabel" style="font-size: 11px; color: #555;">ฐานข้อมูล: Local Storage</span>
-            <button type="button" class="btn-sm" onclick="toggleFirebaseConfigModal()">⚙️ ตั้งค่า Firebase</button>
             <button type="button" class="btn-sm btn-danger" onclick="executeLogout()">ออกจากระบบ</button>
         </div>
     </div>
@@ -635,7 +634,7 @@
                     <option value="แผนกวิชาช่างก่อสร้าง">แผนกวิชาช่างก่อสร้าง</option>
                     <option value="แผนกวิชาช่างกลโรงงาน">แผนกวิชาช่างกลโรงงาน</option>
                     <option value="แผนกวิชาช่างอิเล็กทรอนิกส์">แผนกวิชาช่างอิเล็กทรอนิกส์</option>
-                    <option value="แผนกวิชาคอมพิวเตอร์ธุรกิจ">แผนกวิชาคอมพิวเตอร์ธุรกิจ</option>
+                    <option value="แผนกวิชาเทคโนโลยีธุรกิจดิจิทัล">แผนกวิชาเทคโนโลยีธุรกิจดิจิทัล</option>
                     <option value="แผนกวิชาเทคโนโลยีสารสนเทศ">แผนกวิชาเทคโนโลยีสารสนเทศ</option>
                     <option value="แผนกวิชาการบัญชี">แผนกวิชาการบัญชี</option>
                     <option value="แผนกวิชาเลขานุการ">แผนกวิชาเลขานุการ</option>
@@ -720,7 +719,7 @@
                         <option value="แผนกวิชาช่างก่อสร้าง">แผนกวิชาช่างก่อสร้าง</option>
                         <option value="แผนกวิชาช่างกลโรงงาน">แผนกวิชาช่างกลโรงงาน</option>
                         <option value="แผนกวิชาช่างอิเล็กทรอนิกส์">แผนกวิชาช่างอิเล็กทรอนิกส์</option>
-                        <option value="แผนกวิชาคอมพิวเตอร์ธุรกิจ">แผนกวิชาคอมพิวเตอร์ธุรกิจ</option>
+                        <option value="แผนกวิชาเทคโนโลยีธุรกิจดิจิทัล">แผนกวิชาเทคโนโลยีธุรกิจดิจิทัล</option>
                         <option value="แผนกวิชาเทคโนโลยีสารสนเทศ">แผนกวิชาเทคโนโลยีสารสนเทศ</option>
                         <option value="แผนกวิชาการบัญชี">แผนกวิชาการบัญชี</option>
                         <option value="แผนกวิชาเลขานุการ">แผนกวิชาเลขานุการ</option>
@@ -835,7 +834,7 @@
                     <option value="แผนกวิชาช่างก่อสร้าง">แผนกวิชาช่างก่อสร้าง</option>
                     <option value="แผนกวิชาช่างกลโรงงาน">แผนกวิชาช่างกลโรงงาน</option>
                     <option value="แผนกวิชาช่างอิเล็กทรอนิกส์">แผนกวิชาช่างอิเล็กทรอนิกส์</option>
-                    <option value="แผนกวิชาคอมพิวเตอร์ธุรกิจ">แผนกวิชาคอมพิวเตอร์ธุรกิจ</option>
+                    <option value="แผนกวิชาเทคโนโลยีธุรกิจดิจิทัล">แผนกวิชาเทคโนโลยีธุรกิจดิจิทัล</option>
                     <option value="แผนกวิชาเทคโนโลยีสารสนเทศ">แผนกวิชาเทคโนโลยีสารสนเทศ</option>
                     <option value="แผนกวิชาการบัญชี">แผนกวิชาการบัญชี</option>
                     <option value="แผนกวิชาเลขานุการ">แผนกวิชาเลขานุการ</option>
@@ -873,46 +872,12 @@
     </div>
 </div>
 
-<!-- ======================================================== -->
-<!-- 5. FIREBASE SETTINGS MODAL                                -->
-<!-- ======================================================== -->
-<div id="firebaseConfigModal" class="modal-overlay">
-    <div class="modal-body" style="max-width: 500px;">
-        <h3 class="modal-title">⚙️ ตั้งค่าการเชื่อมต่อ Firebase</h3>
-        <p style="font-size: 12px; color: #555; margin-top: 0;">
-            วางข้อความ JSON ก้อน <code>firebaseConfig</code> จาก Firebase Console หรือกรอกค่าลงในช่อง
-        </p>
-
-        <div class="form-group">
-            <label>วางโค้ด JSON ก้อนเดียว:</label>
-            <textarea id="cfgPasteArea" rows="2" placeholder='{"apiKey": "...", "projectId": "...", ...}' style="font-family: monospace;"></textarea>
-            <button type="button" class="btn-sm" onclick="parseConfigFromJson()" style="margin-top: 4px;">แยกใส่ช่องด้านล่าง</button>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <div class="form-group"><label>apiKey:</label><input type="text" id="cfgApiKey"></div>
-            <div class="form-group"><label>projectId:</label><input type="text" id="cfgProjectId"></div>
-            <div class="form-group"><label>authDomain:</label><input type="text" id="cfgAuthDomain"></div>
-            <div class="form-group"><label>storageBucket:</label><input type="text" id="cfgStorageBucket"></div>
-            <div class="form-group"><label>messagingSenderId:</label><input type="text" id="cfgMessagingSenderId"></div>
-            <div class="form-group"><label>appId:</label><input type="text" id="cfgAppId"></div>
-        </div>
-
-        <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 8px;">
-            <button type="button" onclick="toggleFirebaseConfigModal()">ปิด</button>
-            <button type="button" onclick="resetToLocalDemo()">รีเซ็ตใช้ Local Storage</button>
-            <button type="button" class="btn-primary" onclick="saveFirebaseConfig()">บันทึก & เชื่อมต่อ</button>
-        </div>
-    </div>
-</div>
-
 <script>
     // =========================================================
     // 1. CONSTANTS & STORAGE KEYS
     // =========================================================
     const USERS_STORAGE_KEY = 'net_simple_users';
     const REPORTS_STORAGE_KEY = 'net_simple_reports';
-    const FIREBASE_CONFIG_KEY = 'net_simple_fb_cfg';
     const N8N_WEBHOOK_URL = 'https://westminster-gazette-argue-overseas.trycloudflare.com/webhook/website-report';
 
     let firestoreInstance = null;
@@ -1666,75 +1631,6 @@ async function triggerN8nEmailNotification(reportData) {
             alert(`บันทึกการแก้ไขรายการรหัส ${id} เรียบร้อยแล้ว`);
         } catch (err) {
             alert('ไม่สามารถบันทึกได้: ' + err.message);
-        }
-    }
-
-    // =========================================================
-    // 9. FIREBASE SETTINGS MODAL
-    // =========================================================
-    function toggleFirebaseConfigModal() {
-        const modal = document.getElementById('firebaseConfigModal');
-        const isShown = (modal.style.display === 'flex');
-        modal.style.display = isShown ? 'none' : 'flex';
-
-        if (!isShown) {
-            const saved = localStorage.getItem(FIREBASE_CONFIG_KEY);
-            if (saved) {
-                try {
-                    const c = JSON.parse(saved);
-                    document.getElementById('cfgApiKey').value = c.apiKey || '';
-                    document.getElementById('cfgProjectId').value = c.projectId || '';
-                    document.getElementById('cfgAuthDomain').value = c.authDomain || '';
-                    document.getElementById('cfgStorageBucket').value = c.storageBucket || '';
-                    document.getElementById('cfgMessagingSenderId').value = c.messagingSenderId || '';
-                    document.getElementById('cfgAppId').value = c.appId || '';
-                } catch(e) {}
-            }
-        }
-    }
-
-    function parseConfigFromJson() {
-        const text = document.getElementById('cfgPasteArea').value.trim();
-        if (!text) return;
-        try {
-            const clean = text.replace(/^[^{]*/, '').replace(/[^}]*$/, '');
-            const obj = JSON.parse(clean);
-            if (obj.apiKey) document.getElementById('cfgApiKey').value = obj.apiKey;
-            if (obj.projectId) document.getElementById('cfgProjectId').value = obj.projectId;
-            if (obj.authDomain) document.getElementById('cfgAuthDomain').value = obj.authDomain;
-            if (obj.storageBucket) document.getElementById('cfgStorageBucket').value = obj.storageBucket;
-            if (obj.messagingSenderId) document.getElementById('cfgMessagingSenderId').value = obj.messagingSenderId;
-            if (obj.appId) document.getElementById('cfgAppId').value = obj.appId;
-            alert("แยกข้อมูลลงช่องเรียบร้อยแล้ว กรุณากด 'บันทึก & เชื่อมต่อ'");
-        } catch (e) {
-            alert("รูปแบบ JSON ไม่ถูกต้อง");
-        }
-    }
-
-    function saveFirebaseConfig() {
-        const cfg = {
-            apiKey: document.getElementById('cfgApiKey').value.trim(),
-            projectId: document.getElementById('cfgProjectId').value.trim(),
-            authDomain: document.getElementById('cfgAuthDomain').value.trim(),
-            storageBucket: document.getElementById('cfgStorageBucket').value.trim(),
-            messagingSenderId: document.getElementById('cfgMessagingSenderId').value.trim(),
-            appId: document.getElementById('cfgAppId').value.trim()
-        };
-
-        if (!cfg.apiKey || !cfg.projectId) {
-            alert('กรุณากรอก apiKey และ projectId เป็นอย่างน้อย');
-            return;
-        }
-
-        localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(cfg));
-        alert('บันทึกการตั้งค่าแล้ว ระบบจะทำการรีเฟรชเพื่อเชื่อมต่อ...');
-        location.reload();
-    }
-
-    function resetToLocalDemo() {
-        if (confirm('ต้องการรีเซ็ตกลับเป็นโหมด Local Storage หรือไม่?')) {
-            localStorage.removeItem(FIREBASE_CONFIG_KEY);
-            location.reload();
         }
     }
 
