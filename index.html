@@ -595,7 +595,6 @@
             รหัส 13 หลัก: <strong>กำลังโหลด...</strong>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
-            <span id="storageModeLabel" style="font-size: 11px; color: #555;">ฐานข้อมูล: Local Storage</span>
             <button type="button" class="btn-sm btn-danger" onclick="executeLogout()">ออกจากระบบ</button>
         </div>
     </div>
@@ -647,10 +646,6 @@
             <div class="form-group">
                 <label>ปัญหา: <span class="req">*</span></label>
                 <textarea id="formProblem" rows="3" required placeholder="ระบุรายละเอียดปัญหาที่พบ เช่น ใช้งานอินเทอร์เน็ตไม่ได้, เชื่อมต่อ Wi-Fi ไม่ติด, สัญญาณหลุดบ่อย..."></textarea>
-            </div>
-
-            <div style="font-size: 11px; color: #666; margin-bottom: 8px;">
-                * ระบบจะบันทึก <strong>[วันที่ยื่น]</strong> ตามเวลามาตรฐานประเทศไทย (Asia/Bangkok) โดยอัตโนมัติเมื่อกดส่ง
             </div>
 
             <button type="submit" class="btn-primary">ส่งรายงานปัญหา</button>
@@ -769,7 +764,6 @@
     <!-- Footer -->
     <div class="app-footer">
         <span>ระบบแจ้งปัญหาเครือข่ายคอมพิวเตอร์</span>
-        <span>เวลามาตรฐานประเทศไทย (Asia/Bangkok)</span>
     </div>
 </div>
 
@@ -984,8 +978,6 @@
             localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(allUsers));
         }
 
-        const modeLabel = document.getElementById('storageModeLabel');
-
         const config = {
             apiKey: "AIzaSyBYJL-iKhabksVsIKu1NHUuKxILXiuXEbA",
             authDomain: "network-reporting-system.firebaseapp.com",
@@ -1000,15 +992,12 @@
                 firebase.initializeApp(config);
             }
             firestoreInstance = firebase.firestore();
-            modeLabel.innerHTML = '<span style="color: green; font-weight: bold;">ฐานข้อมูล: Firestore Online</span>';
             listenToFirestoreReports();
             return;
         } catch (err) {
             console.error("Firestore init error:", err);
-            modeLabel.innerText = 'ฐานข้อมูล: เชื่อมต่อ Firebase ล้มเหลว (ใช้ Local Storage)';
         }
 
-        modeLabel.innerText = 'ฐานข้อมูล: Local Storage';
         const savedReports = localStorage.getItem(REPORTS_STORAGE_KEY);
         allReports = savedReports ? JSON.parse(savedReports) : [...DEFAULT_REPORTS];
         allReports.forEach(r => knownTicketIds.add(r.id));
