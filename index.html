@@ -882,7 +882,7 @@
     // 1. CONSTANTS & STORAGE KEYS
     // =========================================================
     const REPORTS_STORAGE_KEY = 'net_simple_reports';
-    const N8N_WEBHOOK_URL = 'https://westminster-gazette-argue-overseas.trycloudflare.com/webhook/website-report';
+    const N8N_WEBHOOK_URL = 'https://rebound-deposits-converted-elimination.trycloudflare.com/webhook/website-report';
 
     let firestoreInstance = null;
     let firebaseAuth = null;
@@ -1034,8 +1034,6 @@
 // N8N AUTOMATED ALERT DISPATCHER
 // =========================================================
 async function triggerN8nEmailNotification(reportData) {
-    const N8N_WEBHOOK_URL = 'https://westminster-gazette-argue-overseas.trycloudflare.com/webhook/website-report';
-
     try {
         await fetch(N8N_WEBHOOK_URL, {
             method: 'POST',
