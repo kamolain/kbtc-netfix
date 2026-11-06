@@ -7,6 +7,7 @@
 
     <!-- Firebase App & Firestore Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
     <style>
@@ -529,8 +530,8 @@
 
             <form onsubmit="executeSignIn(event)">
                 <div class="auth-field">
-                    <label for="inputLoginId">รหัส 13 หลัก:</label>
-                    <input type="text" id="inputLoginId" maxlength="13" required placeholder="กรอกรหัส 13 หลัก">
+                    <label for="inputLoginEmail">อีเมล:</label>
+                    <input type="email" id="inputLoginEmail" required placeholder="กรอกอีเมล">
                 </div>
 
                 <div class="auth-field">
@@ -552,6 +553,16 @@
             <div id="signUpError" class="auth-error"></div>
 
             <form onsubmit="executeSignUp(event)">
+                <div class="auth-field">
+                    <label for="inputRegEmail">อีเมล:</label>
+                    <input type="email" id="inputRegEmail" required placeholder="กรอกอีเมล">
+                </div>
+
+                <div class="auth-field">
+                    <label for="inputRegFullName">ชื่อ-นามสกุล:</label>
+                    <input type="text" id="inputRegFullName" required placeholder="กรอกชื่อและนามสกุล">
+                </div>
+
                 <div class="auth-field">
                     <label for="inputRegId">รหัส 13 หลัก:</label>
                     <input type="text" id="inputRegId" maxlength="13" required placeholder="กรอกรหัส 13 หลัก">
@@ -611,8 +622,8 @@
         <form onsubmit="executeSubmitReport(event)">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="form-group">
-                    <label>ชื่อ-นามสกุล: <span class="req">*</span></label>
-                    <input type="text" id="formFullName" required placeholder="ระบุชื่อและนามสกุล">
+                <label>ชื่อ-นามสกุล:</label>
+                <input type="text" id="formFullName" readonly>
                 </div>
                 <div class="form-group">
                     <label>รหัส 13 หลัก:</label>
@@ -814,7 +825,7 @@
             </div>
             <div class="form-group">
                 <label>ชื่อ-นามสกุล ผู้แจ้ง:</label>
-                <input type="text" id="editFullName" required>
+                <input type="text" id="editFullName" readonly>
             </div>
             <div class="form-group">
                 <label>แผนก:</label>
@@ -870,31 +881,17 @@
     // =========================================================
     // 1. CONSTANTS & STORAGE KEYS
     // =========================================================
-    const USERS_STORAGE_KEY = 'net_simple_users';
     const REPORTS_STORAGE_KEY = 'net_simple_reports';
     const N8N_WEBHOOK_URL = 'https://westminster-gazette-argue-overseas.trycloudflare.com/webhook/website-report';
 
     let firestoreInstance = null;
+    let firebaseAuth = null;
     let firestoreUnsubscribe = null;
 
-    let currentUser = null; // { idNumber, password, role: 'admin' | 'user' }
-    let allUsers = [];
+    let currentUser = null; // { uid, email, fullName, idNumber, role: 'admin' | 'user' }
     let allReports = [];
     let knownTicketIds = new Set();
     let initialLoadDone = false;
-
-    // Seed Accounts
-    const DEFAULT_ADMIN_ACCOUNT = {
-        idNumber: '69402040022',
-        password: '456654',
-        role: 'admin'
-    };
-    const DEFAULT_USER_ACCOUNT = {
-        idNumber: '1234566543210',
-        password: '123456',
-        role: 'user'
-    };
-    const DEFAULT_ACCOUNTS = [DEFAULT_ADMIN_ACCOUNT, DEFAULT_USER_ACCOUNT];
 
     // Seed Demo Reports
     const DEFAULT_REPORTS = [
@@ -967,17 +964,6 @@
     // 4. DATABASE / STORAGE INITIALIZATION
     // =========================================================
     function initDatabaseStorage() {
-        const savedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-        allUsers = savedUsers ? JSON.parse(savedUsers) : [];
-        [DEFAULT_ADMIN_ACCOUNT, DEFAULT_USER_ACCOUNT].forEach(defaultAccount => {
-            if (!allUsers.some(user => user.idNumber === defaultAccount.idNumber)) {
-                allUsers.push({ ...defaultAccount });
-            }
-        });
-        if (savedUsers === null || allUsers.length > JSON.parse(savedUsers || '[]').length) {
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(allUsers));
-        }
-
         const config = {
             apiKey: "AIzaSyBYJL-iKhabksVsIKu1NHUuKxILXiuXEbA",
             authDomain: "network-reporting-system.firebaseapp.com",
@@ -991,6 +977,7 @@
             if (!firebase.apps.length) {
                 firebase.initializeApp(config);
             }
+            firebaseAuth = firebase.auth();
             firestoreInstance = firebase.firestore();
             listenToFirestoreReports();
             return;
@@ -1093,48 +1080,29 @@ async function triggerN8nEmailNotification(reportData) {
         e.preventDefault();
         clearAuthErrors();
 
-        const idNumber = document.getElementById('inputLoginId').value.trim();
+        const email = document.getElementById('inputLoginEmail').value.trim();
         const password = document.getElementById('inputLoginPassword').value;
 
-        const isDefaultAdmin = idNumber === DEFAULT_ADMIN_ACCOUNT.idNumber;
-        const isDefaultUser = idNumber === DEFAULT_USER_ACCOUNT.idNumber;
-        if ((!isDefaultAdmin && !isDefaultUser && idNumber.length !== 13) || !/^\d+$/.test(idNumber)) {
-            setAuthError('signInError', 'กรุณากรอกรหัส 13 หลักให้ถูกต้อง (ตัวเลข 13 หลัก)');
+        if (!email || !password) {
+            setAuthError('signInError', 'กรุณากรอกอีเมลและรหัสผ่าน');
             return;
         }
 
         try {
-            const defaultAccount = isDefaultAdmin
-                ? DEFAULT_ADMIN_ACCOUNT
-                : isDefaultUser
-                    ? DEFAULT_USER_ACCOUNT
-                    : null;
-            if (defaultAccount) {
-                if (password !== defaultAccount.password) {
-                    setAuthError('signInError', 'รหัส 13 หลัก หรือ รหัสผ่านไม่ถูกต้อง');
-                    return;
-                }
-                loginSession(defaultAccount);
+            if (!firebaseAuth || !firestoreInstance) {
+                setAuthError('signInError', 'ไม่สามารถเชื่อมต่อระบบยืนยันตัวตนได้');
                 return;
             }
-
-            if (firestoreInstance) {
-                const userDoc = await firestoreInstance.collection('users').doc(idNumber).get();
-                if (!userDoc.exists || userDoc.data().password !== password) {
-                    setAuthError('signInError', 'รหัส 13 หลัก หรือ รหัสผ่านไม่ถูกต้อง');
-                    return;
-                }
-                loginSession(userDoc.data());
-            } else {
-                const user = allUsers.find(u => u.idNumber === idNumber && u.password === password);
-                if (!user) {
-                    setAuthError('signInError', 'รหัส 13 หลัก หรือ รหัสผ่านไม่ถูกต้อง');
-                    return;
-                }
-                loginSession(user);
+            const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+            const userDoc = await firestoreInstance.collection('users').doc(credential.user.uid).get();
+            if (!userDoc.exists) {
+                await firebaseAuth.signOut();
+                setAuthError('signInError', 'ไม่พบข้อมูลโปรไฟล์ผู้ใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
+                return;
             }
+            loginSession({ uid: credential.user.uid, email: credential.user.email, ...userDoc.data() });
         } catch (err) {
-            setAuthError('signInError', 'เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message);
+            setAuthError('signInError', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
         }
     }
 
@@ -1142,9 +1110,16 @@ async function triggerN8nEmailNotification(reportData) {
         e.preventDefault();
         clearAuthErrors();
 
+        const email = document.getElementById('inputRegEmail').value.trim();
+        const fullName = document.getElementById('inputRegFullName').value.trim();
         const idNumber = document.getElementById('inputRegId').value.trim();
         const password = document.getElementById('inputRegPassword').value;
         const passwordConfirm = document.getElementById('inputRegPasswordConfirm').value;
+
+        if (!email || !fullName) {
+            setAuthError('signUpError', 'กรุณากรอกอีเมลและชื่อ-นามสกุล');
+            return;
+        }
 
         if (idNumber.length !== 13 || !/^\d+$/.test(idNumber)) {
             setAuthError('signUpError', 'รหัส 13 หลัก ต้องเป็นตัวเลข 13 หลัก');
@@ -1161,44 +1136,31 @@ async function triggerN8nEmailNotification(reportData) {
             return;
         }
 
-        if (idNumber === DEFAULT_ADMIN_ACCOUNT.idNumber) {
-            setAuthError('signUpError', 'รหัสนี้เป็นบัญชีผู้ดูแลระบบเริ่มต้น ไม่สามารถสมัครซ้ำได้');
-            return;
-        }
-        if (idNumber === DEFAULT_USER_ACCOUNT.idNumber) {
-            setAuthError('signUpError', 'รหัสนี้เป็นบัญชีผู้ใช้งานเริ่มต้น ไม่สามารถสมัครซ้ำได้');
-            return;
-        }
-
-        const newUser = {
-            idNumber,
-            password,
-            role: (idNumber === '9999999999999') ? 'admin' : 'user',
-            createdAt: new Date().toISOString()
-        };
-
         try {
-            if (firestoreInstance) {
-                const docRef = firestoreInstance.collection('users').doc(idNumber);
-                const docSnap = await docRef.get();
-                if (docSnap.exists) {
-                    setAuthError('signUpError', 'รหัส 13 หลักนี้เคยสมัครสมาชิกแล้ว กรุณากดเข้าสู่ระบบ');
-                    return;
-                }
-                await docRef.set(newUser);
-            } else {
-                if (allUsers.some(u => u.idNumber === idNumber)) {
-                    setAuthError('signUpError', 'รหัส 13 หลักนี้เคยสมัครสมาชิกแล้ว กรุณากดเข้าสู่ระบบ');
-                    return;
-                }
-                allUsers.push(newUser);
-                localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(allUsers));
+            if (!firebaseAuth || !firestoreInstance) {
+                setAuthError('signUpError', 'ไม่สามารถเชื่อมต่อระบบยืนยันตัวตนได้');
+                return;
             }
 
+            const credential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+            const newUser = {
+                uid: credential.user.uid,
+                email,
+                fullName,
+                idNumber,
+                role: 'user',
+                createdAt: new Date().toISOString()
+            };
+            await firestoreInstance.collection('users').doc(credential.user.uid).set(newUser);
             alert('สมัครสมาชิกสำเร็จแล้ว! ระบบจะนำเข้าสู่ระบบทันที');
             loginSession(newUser);
         } catch (err) {
-            setAuthError('signUpError', 'เกิดข้อผิดพลาดในการสมัครสมาชิก: ' + err.message);
+            const message = err.code === 'auth/email-already-in-use'
+                ? 'อีเมลนี้มีบัญชีอยู่แล้ว กรุณากดเข้าสู่ระบบ'
+                : err.code === 'auth/invalid-email'
+                    ? 'รูปแบบอีเมลไม่ถูกต้อง'
+                    : 'เกิดข้อผิดพลาดในการสมัครสมาชิก: ' + err.message;
+            setAuthError('signUpError', message);
         }
     }
 
@@ -1214,9 +1176,9 @@ async function triggerN8nEmailNotification(reportData) {
             : '<span class="badge-role badge-user">ผู้ใช้งานทั่วไป</span>';
 
         document.getElementById('sessionUserLabel').innerHTML =
-            `รหัส 13 หลัก: <strong>${escapeHtml(user.idNumber)}</strong> | สถานะ: ${roleBadge}`;
+            `${escapeHtml(user.fullName)} | รหัส 13 หลัก: <strong>${escapeHtml(user.idNumber)}</strong> | สถานะ: ${roleBadge}`;
 
-        // Lock 13-digit ID in the submission form
+        document.getElementById('formFullName').value = user.fullName;
         document.getElementById('formIdNumber').value = user.idNumber;
 
         // Perspective toggles
@@ -1232,6 +1194,9 @@ async function triggerN8nEmailNotification(reportData) {
     }
 
     function executeLogout() {
+        if (firebaseAuth) {
+            firebaseAuth.signOut().catch(err => console.error('Firebase sign-out error:', err));
+        }
         currentUser = null;
         sessionStorage.removeItem('net_active_session');
 
@@ -1239,7 +1204,11 @@ async function triggerN8nEmailNotification(reportData) {
         document.getElementById('authScreen').style.display = 'flex';
         document.getElementById('adminNotificationBanner').style.display = 'none';
 
+        document.getElementById('inputLoginEmail').value = '';
         document.getElementById('inputLoginPassword').value = '';
+        document.getElementById('inputRegEmail').value = '';
+        document.getElementById('inputRegFullName').value = '';
+        document.getElementById('inputRegId').value = '';
         showAuthBox('signin');
     }
     
@@ -1250,12 +1219,12 @@ async function triggerN8nEmailNotification(reportData) {
         e.preventDefault();
         if (!currentUser) return;
 
-        const fullName = document.getElementById('formFullName').value.trim();
-        const idNumber = document.getElementById('formIdNumber').value.trim();
+        const fullName = currentUser.fullName;
+        const idNumber = currentUser.idNumber;
         const department = document.getElementById('formDepartment').value;
         const problem = document.getElementById('formProblem').value.trim();
 
-        if (!fullName || !department || !problem) {
+        if (!fullName || !idNumber || !department || !problem) {
             alert('กรุณากรอกข้อมูลให้ครบถ้วน');
             return;
         }
@@ -1588,7 +1557,6 @@ async function triggerN8nEmailNotification(reportData) {
     async function executeSaveAdminEdit(e) {
         e.preventDefault();
         const id = document.getElementById('editDocId').value;
-        const fullName = document.getElementById('editFullName').value.trim();
         const department = document.getElementById('editDepartment').value;
         const problem = document.getElementById('editProblem').value.trim();
         const status = document.getElementById('editStatus').value;
@@ -1597,7 +1565,6 @@ async function triggerN8nEmailNotification(reportData) {
         try {
             if (firestoreInstance) {
                 await firestoreInstance.collection('network_reports').doc(id).update({
-                    fullName,
                     department,
                     problem,
                     status,
@@ -1606,7 +1573,6 @@ async function triggerN8nEmailNotification(reportData) {
             } else {
                 const idx = allReports.findIndex(r => r.id === id);
                 if (idx !== -1) {
-                    allReports[idx].fullName = fullName;
                     allReports[idx].department = department;
                     allReports[idx].problem = problem;
                     allReports[idx].status = status;
