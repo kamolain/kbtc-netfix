@@ -1232,6 +1232,7 @@ async function triggerN8nEmailNotification(reportData) {
 
         const newReport = {
             id: ticketNum,
+            email: currentUser.email,
             fullName,
             idNumber,
             department,
@@ -1254,8 +1255,11 @@ async function triggerN8nEmailNotification(reportData) {
 
             // Dispatch alert via n8n helper function
             triggerN8nEmailNotification({
+                notificationType: 'new-ticket',
                 ticketId: ticketNum,
+                recipientEmail: 'kamolain@gmail.com',
                 fullName,
+                email: currentUser.email,
                 idNumber,
                 department,
                 problem,
@@ -1555,6 +1559,13 @@ async function triggerN8nEmailNotification(reportData) {
     async function executeSaveAdminEdit(e) {
         e.preventDefault();
         const id = document.getElementById('editDocId').value;
+        const report = allReports.find(item => item.id === id);
+        if (!report) {
+            alert('ไม่พบรายงานที่ต้องการแก้ไข');
+            return;
+        }
+
+        const previousStatus = report.status || 'รอดำเนินการ';
         const department = document.getElementById('editDepartment').value;
         const problem = document.getElementById('editProblem').value.trim();
         const status = document.getElementById('editStatus').value;
@@ -1577,6 +1588,27 @@ async function triggerN8nEmailNotification(reportData) {
                     allReports[idx].adminNote = adminNote;
                     localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(allReports));
                     renderAdminWorkspace();
+                }
+            }
+
+            if (status !== previousStatus) {
+                if (!report.email) {
+                    console.warn(`ไม่พบอีเมลของผู้แจ้งสำหรับรายงาน ${id} จึงไม่สามารถส่งการแจ้งเตือนสถานะได้`);
+                } else {
+                    triggerN8nEmailNotification({
+                        notificationType: 'ticket-status-changed',
+                        ticketId: id,
+                        recipientEmail: report.email,
+                        email: report.email,
+                        fullName: report.fullName,
+                        idNumber: report.idNumber,
+                        department,
+                        problem,
+                        previousStatus,
+                        status,
+                        adminNote,
+                        submittedAt: report.createdAtFormatted
+                    });
                 }
             }
 
